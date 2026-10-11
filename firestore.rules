@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read/write their own transfers
+    match /transfers/{transferId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null;
+    }
+    
+    // Allow reading transfer metadata with token validation
+    match /transfers/{transferId} {
+      allow get: if request.query.limit == 1;
+    }
+    
+    // Admin access rules
+    match /admin/{document=**} {
+      allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Audit logs - append only
+    match /auditLogs/{logId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+  }
+}
